@@ -54,17 +54,17 @@ The storage account `seclabdata` was provisioned with public blob access enabled
 
 This combination means anyone with the container URL could read these files without any authentication, and traffic to the storage account wasn't guaranteed to be encrypted in transit.
 
-![public access enabled](evidence/before-storage-public-access-enabled.png)
-![public container contents](evidence/before-public-container-files.png)
+![public access enabled](screenshots/before-storage-public-access-enabled.png)
+![public container contents](screenshots/before-public-container-files.png)
 
 Defender for Cloud flagged this under its public access recommendation, mapped to CIS control 3.7:
 
-![defender finding detail](evidence/defender-detail-storage-public-access.png)
+![defender finding detail](screenshots/defender-detail-storage-public-access.png)
 
 **Remediation:** Disabled blob anonymous access and enabled secure transfer through the storage account's Configuration blade.
 
-![public access disabled](evidence/after-storage-public-access-disabled.png)
-![secure transfer enabled](evidence/after-storage-secure-transfer-enabled.png)
+![public access disabled](screenshots/after-storage-public-access-disabled.png)
+![secure transfer enabled](screenshots/after-storage-secure-transfer-enabled.png)
 
 CIS Control: 3.7, 3.1 | Severity: High
 
@@ -74,15 +74,15 @@ CIS Control: 3.7, 3.1 | Severity: High
 
 The NSG attached to `VM-lab1` had inbound rules allowing SSH (22) and RDP (3389) from any source (0.0.0.0/0). This is one of the most common real-world findings in cloud environments — exposed management ports are a direct target for credential brute-forcing and automated exploit scanning, and they don't require any further misconfiguration to be actively dangerous the moment the VM is reachable.
 
-![open ports](evidence/before-nsg-open-ssh-rdp.png)
+![open ports](screenshots/before-nsg-open-ssh-rdp.png)
 
 Defender for Cloud flagged this as an open management port finding:
 
-![defender finding detail](evidence/defender-detail-open-management-ports.png)
+![defender finding detail](screenshots/defender-detail-open-management-ports.png)
 
 **Remediation:** Removed both rules from the NSG, leaving only the default secure rules (intra-VNet traffic and Azure Load Balancer health probes).
 
-![ports closed](evidence/after-nsg-rules-removed.png)
+![ports closed](screenshots/after-nsg-rules-removed.png)
 
 CIS Control: 6.2, 6.3 | Severity: High
 
@@ -92,11 +92,11 @@ CIS Control: 6.2, 6.3 | Severity: High
 
 The subscription had two separate Owner role assignments tied to the same account at subscription scope — one created as a standard Owner assignment, the other configured with a "highly privileged" delegation condition. Standing privileged access at this scope violates least-privilege principles: every account holding Owner has full control over every resource and every other identity's permissions in the subscription, with no time-bound or approval-based limitation.
 
-![duplicate owner](evidence/before-rbac-duplicate-owner.png)
+![duplicate owner](screenshots/before-rbac-duplicate-owner.png)
 
 **Remediation:** Removed the duplicate assignment, leaving a single Owner role.
 
-![single owner](evidence/after-rbac-single-owner.png)
+![single owner](screenshots/after-rbac-single-owner.png)
 
 CIS Control: 1.1 | Severity: Medium
 
@@ -108,7 +108,7 @@ CIS Control: 1.1 | Severity: Medium
 
 The subscription's Activity Log diagnostic setting was configured to export only the "Administrative" category to storage, leaving Security, Policy, ServiceHealth, and Alert events unexported. The CIS benchmark requires full-category logging — a partial export creates a blind spot where security-relevant events (like policy changes or triggered alerts) aren't retained anywhere queryable.
 
-![partial logging](evidence/before-incomplete-diagnostic-logging.png)
+![partial logging](screenshots/before-incomplete-diagnostic-logging.png)
 
 CIS Control: 5.1.1 | Severity: Medium
 
@@ -123,8 +123,8 @@ Manually remediating a finding fixes the resource that already exists — it doe
 
 Both policies were tested by deliberately attempting to violate them via Azure CLI rather than just assuming they'd work. Both attempts were rejected by Azure with `RequestDisallowedByPolicy`.
 
-![storage policy test](evidence/after-policy-deny-storage-test.png)
-![ports policy test](evidence/after-policy-deny-ports-test.png)
+![storage policy test](screenshots/after-policy-deny-storage-test.png)
+![ports policy test](screenshots/after-policy-deny-ports-test.png)
 
 Policy definitions: [`/policies`](./policies)
 
@@ -136,7 +136,7 @@ To move past one-off manual fixes, I wrote a Bash/Azure CLI script (`remediate.s
 
 To validate the script independently of the Deny policy, I temporarily disabled the storage policy, re-introduced the public access misconfiguration via CLI, and ran the script against the resource group. It detected and corrected the finding without manual intervention.
 
-![script output](evidence/after-remediation-script-output.png)
+![script output](screenshots/after-remediation-script-output.png)
 
 ---
 
@@ -149,8 +149,8 @@ To validate the script independently of the Deny policy, I temporarily disabled 
 | Findings remediated | — | [X] of [X] |
 | Preventive policies deployed and tested | 0 | 2 |
 
-![baseline score](evidence/before-securescore-baseline-4percent.png)
-![final score](evidence/after-securescore-final.png)
+![baseline score](screenshots/before-securescore-baseline-4percent.png)
+![final score](screenshots/after-securescore-final.png)
 
 ---
 
