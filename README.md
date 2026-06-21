@@ -44,7 +44,7 @@ Azure Subscription
 - [Preventive Policy Enforcement](#preventive-policy-enforcement)
 - [Remediation Automation](#remediation-automation)
 - [Results](#results)
-- [Lessons Learned](#lessons-learned)
+- [Key Takeaways](#Key-Takeaways)
 
 ---
 
