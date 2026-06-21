@@ -40,7 +40,6 @@ Azure Subscription
 - [Storage Account Misconfiguration](#storage-account-misconfiguration)
 - [Network Security Group Misconfiguration](#network-security-group-misconfiguration)
 - [Identity and Access Management](#identity-and-access-management)
-- [Activity Logging](#activity-logging)
 - [Preventive Policy Enforcement](#preventive-policy-enforcement)
 - [Remediation Automation](#remediation-automation)
 - [Results](#results)
