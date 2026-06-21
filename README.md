@@ -1,4 +1,4 @@
-# Azure Cloud Security Assessment
+# Azure Cloud Posture Assessment
 
 ## Overview
 
