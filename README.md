@@ -50,29 +50,27 @@ Azure Subscription
 
 ## Storage Account Misconfiguration
 
-The storage account `seclabdata` was provisioned with public blob access enabled and secure transfer (HTTPS enforcement) disabled. A container was set to allow anonymous read access at the blob level, and fake sensitive files — a credentials file and a CSV of employee records — were uploaded to demonstrate what real-world exposure looks like, not just a flagged setting in isolation.
+The storage account `seclabdata` was provided with public blob access enabled and secure transfer (HTTPS enforcement) disabled. A container was set to allow anonymous read access at the blob level. Fake sensitive files, a credentials file and a CSV of employee records were uploaded to demonstrate what real-world exposure would look like.
 
-This combination means anyone with the container URL could read these files without any authentication, and traffic to the storage account wasn't guaranteed to be encrypted in transit.
+This combination means anyone with the container URL could read these files without any authentication, and any traffic to the storage account wasn't guaranteed to be encrypted.
 
 ![public access enabled](screenshots/before-storage-public-access-enabled.png)
 ![public container contents](screenshots/before-public-container-files.png)
 
-Defender for Cloud flagged this under its public access recommendation, mapped to CIS control 3.7:
+Defender for Cloud flagged this under its public access recommendation, CIS control 3.7:
 
 ![defender finding detail](screenshots/defender-detail-storage-public-access.png)
 
-**Remediation:** Disabled blob anonymous access and enabled secure transfer through the storage account's Configuration blade.
+**Remediation:** Disabled blob anonymous access and enabled secure transfer through the storage account's Configuration
 
 ![public access disabled](screenshots/after-storage-public-access-disabled.png)
 ![secure transfer enabled](screenshots/after-storage-secure-transfer-enabled.png)
-
-CIS Control: 3.7, 3.1 | Severity: High
 
 ---
 
 ## Network Security Group Misconfiguration
 
-The NSG attached to `VM-lab1` had inbound rules allowing SSH (22) and RDP (3389) from any source (0.0.0.0/0). This is one of the most common real-world findings in cloud environments — exposed management ports are a direct target for credential brute-forcing and automated exploit scanning, and they don't require any further misconfiguration to be actively dangerous the moment the VM is reachable.
+The NSG attached to `VM-lab1` had inbound rules allowing SSH and RDP from any source. Exposed management ports are a direct target for credential brute-forcing and automated exploit scanning, and they don't require any further misconfiguration to be actively dangerous the moment the VM is reachable.
 
 ![open ports](screenshots/before-nsg-open-ssh-rdp.png)
 
@@ -80,48 +78,32 @@ Defender for Cloud flagged this as an open management port finding:
 
 ![defender finding detail](screenshots/defender-detail-open-management-ports.png)
 
-**Remediation:** Removed both rules from the NSG, leaving only the default secure rules (intra-VNet traffic and Azure Load Balancer health probes).
+**Remediation:** Removed both rules from the network group, leaving only intra-VNet traffic and Azure Load Balancer health probes.
 
 ![ports closed](screenshots/after-nsg-rules-removed.png)
-
-CIS Control: 6.2, 6.3 | Severity: High
 
 ---
 
 ## Identity and Access Management
 
-The subscription had two separate Owner role assignments tied to the same account at subscription scope — one created as a standard Owner assignment, the other configured with a "highly privileged" delegation condition. Standing privileged access at this scope violates least-privilege principles: every account holding Owner has full control over every resource and every other identity's permissions in the subscription, with no time-bound or approval-based limitation.
+The subscription had two separate Owner role assignments tied to the same account. One was created as a standard Owner assignment, the other was configured with a highly privileged condition. This violates least-privilege principles as every account holding Owner has full control over resources with no limitations.
 
 ![duplicate owner](screenshots/before-rbac-duplicate-owner.png)
 
-**Remediation:** Removed the duplicate assignment, leaving a single Owner role.
+**Remediation:** Removed the duplicate assignment, leaving only one single Owner role.
 
 ![single owner](screenshots/after-rbac-single-owner.png)
-
-CIS Control: 1.1 | Severity: Medium
-
-**Scope limitation:** Service principal credential review was not performed for this assessment. App Registration creation is restricted at the tenant level under the Azure for Students subscription type, which sits inside UTD's institutional Azure AD tenant rather than a standalone tenant. In a production environment, this control would cover credential rotation policy and detection of long-lived or unused service principal secrets.
-
----
-
-## Activity Logging
-
-The subscription's Activity Log diagnostic setting was configured to export only the "Administrative" category to storage, leaving Security, Policy, ServiceHealth, and Alert events unexported. The CIS benchmark requires full-category logging — a partial export creates a blind spot where security-relevant events (like policy changes or triggered alerts) aren't retained anywhere queryable.
-
-![partial logging](screenshots/before-incomplete-diagnostic-logging.png)
-
-CIS Control: 5.1.1 | Severity: Medium
 
 ---
 
 ## Preventive Policy Enforcement
 
-Manually remediating a finding fixes the resource that already exists — it doesn't stop the same misconfiguration from being created again tomorrow. To address that, I authored two custom Azure Policy definitions with Deny effect:
+Manually remediating a fix is a temporary solution, it doesn't stop the same misconfiguration from being created again. To manage that, I set up two Azure Policy definitions with a Deny effect:
 
-- **`deny-public-blob-access`** — blocks any storage account from being created or updated with public blob access enabled
-- **`deny-open-management-ports`** — blocks any NSG rule allowing inbound SSH (22) or RDP (3389) from an unrestricted source
+- `deny-public-blob-access` — blocks any storage account from being created or updated with public blob access enabled
+- `deny-open-management-ports` — blocks any NSG rule allowing inbound SSH (22) or RDP (3389) from an unrestricted source
 
-Both policies were tested by deliberately attempting to violate them via Azure CLI rather than just assuming they'd work. Both attempts were rejected by Azure with `RequestDisallowedByPolicy`.
+Both policies were tested by deliberately attempting to violate them via Azure CLI. Both attempts were rejected by Azure with `RequestDisallowedByPolicy`.
 
 ![storage policy test](screenshots/after-policy-deny-storage-test.png)
 ![ports policy test](screenshots/after-policy-deny-ports-test.png)
@@ -132,9 +114,9 @@ Policy definitions: [`/policies`](./policies)
 
 ## Remediation Automation
 
-To move past one-off manual fixes, I wrote a Bash/Azure CLI script (`remediate.sh`) that scans a resource group for the exact misconfiguration patterns identified in this assessment and remediates them automatically — disabling public storage access, enforcing secure transfer, and removing open NSG management-port rules. Over-privileged role assignments are flagged for manual review rather than auto-removed, since RBAC changes carry enough risk that they shouldn't be handled by an unattended script.
+I wrote a CLI script (`remediate.sh`) that scans a resource group for the exact misconfiguration patterns identified in this assessment and automatically remediates them. Disabling public storage access, enforcing secure transfer, and removing open NSG management port rules. Over-privileged role assignments are flagged for manual review rather than being auto-removed, since access control changes carry risks that shouldn't be handled by an unattended script.
 
-To validate the script independently of the Deny policy, I temporarily disabled the storage policy, re-introduced the public access misconfiguration via CLI, and ran the script against the resource group. It detected and corrected the finding without manual intervention.
+To validate the script independently of the Deny policy, I temporarily disabled the storage policy, reintroduced the public access misconfiguration, and ran the script against the resource group. It detected and corrected the finding without manual intervention:
 
 ![script output](screenshots/after-remediation-script-output.png)
 
@@ -154,10 +136,10 @@ To validate the script independently of the Deny policy, I temporarily disabled 
 
 ---
 
-## Lessons Learned
+## Key Takeaways
 
-Most of the findings in this assessment came from Azure's permissive defaults rather than an obviously bad decision — public blob access and unrestricted NSG rules can both be left in place during initial resource creation without any warning at the time. That pushed me toward building the Deny policies instead of stopping at manual remediation: a fix only protects the resource that already exists, while a preventive control protects every resource created after it.
+Most of the findings in this assessment came from Azure's permissive defaults rather than intentional wrong decisions. Public blob access and unrestricted NSG rules can both be left in place during initial resource creation without any warning at the time. That made me want to build the Deny policies instead of just doing manual fixes because a preventive control protects future resources.
 
-Testing the remediation script also surfaced something I didn't plan for. When I tried to re-trigger the storage misconfiguration with the Deny policy still active, Azure blocked my own test command — the policy was already enforcing the exact condition the script was built to catch. I had to temporarily disable the policy to actually exercise the script. In hindsight, that's a real example of defense-in-depth: the preventive control closed the gap before the detective/corrective layer was ever needed, which is the order you'd want those controls to work in a production environment.
+Testing the remediation script also revealed something I hadn't planned for. When I tried to re-trigger the storage misconfiguration with the Deny policy still active, Azure blocked my own test command, the policy was already enforcing the exact condition the script was created to catch. I had to temporarily disable the policy to actually exercise the script. The preventive control closed the gap before the detection layer was ever needed, which is the order you'd want those controls to work in a real environment.
 
-The clearest gap in this assessment was scope, not technique — Azure for Students restricts tenant-level operations like App Registration creation, so the service principal credential finding couldn't be assessed. I documented that limitation directly rather than working around it, which is closer to how a real engagement handles access constraints than pretending the gap doesn't exist.
+The clearest gap in this assessment was its overall scope. Azure for Students restricts operations like App Registration creation, so the service principal credential finding couldn't be assessed. I documented that limitation directly rather than completely avoiding it.
