@@ -125,10 +125,12 @@ To validate the script independently of the Deny policy, I temporarily disabled 
 
 | Metric | Before | After |
 |---|---|---|
-| Secure Score | 4% | [X]% |
-| High/Critical findings | [X] | [X] |
-| Findings remediated | — | [X] of [X] |
+| Secure Score | 4% | 67% |
+| High/Critical findings | 4 | 0 |
+| Findings remediated | — | 5 of 7 |
 | Preventive policies deployed and tested | 0 | 2 |
+
+### Additional lower-severity recommendations were remediated but are not individually documented above
 
 ![baseline score](screenshots/before-securescore-baseline-4percent.png)
 ![final score](screenshots/after-securescore-final.png)
